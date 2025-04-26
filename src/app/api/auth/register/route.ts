@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/db";
+import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -43,7 +43,8 @@ export async function POST(req: Request) {
 
     // Don't return the password
     const {
-      password: {},
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      password: _,
       ...userWithoutPassword
     } = user;
 
