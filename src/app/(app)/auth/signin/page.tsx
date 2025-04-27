@@ -1,6 +1,6 @@
 "use client";
 
-import { registerUser } from "@/actions/auth";
+import { signIn } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,49 +12,42 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { registerSchema, type RegisterSchema } from "@/lib/zod";
+import { loginSchema, type LoginSchema } from "@/lib/zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-export default function Register() {
+export default function SignIn() {
   const router = useRouter();
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setError,
-  } = useForm<RegisterSchema>({
-    resolver: zodResolver(registerSchema),
+  } = useForm<LoginSchema>({
+    resolver: zodResolver(loginSchema),
   });
 
-  async function onSubmit(data: RegisterSchema) {
+  async function onSubmit(data: LoginSchema) {
     try {
-      const result = await registerUser(data);
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
 
-      if (result.error) {
-        if (typeof result.error === "string") {
-          setError("root", { message: result.error });
-        } else {
-          // Handle Zod validation errors
-          result.error.forEach((err) => {
-            setError(err.path[0] as keyof RegisterSchema, {
-              message: err.message,
-            });
-          });
-        }
+      if (!result?.ok) {
+        setError("root", { message: "Invalid credentials" });
         return;
       }
 
-      toast.success("Account created successfully!");
-      router.push("/auth/signin?registered=true");
-    } catch (error) {
-      console.log(error);
-      setError("root", {
-        message: "An unexpected error occurred. Please try again.",
-      });
+      toast.success("Signed in successfully!");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("root", { message: "Something went wrong" });
     }
   }
 
@@ -62,23 +55,13 @@ export default function Register() {
     <div className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">
-            Create your account
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Sign in to your account</CardTitle>
           <CardDescription>
-            Enter your information below to create your account
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" {...register("name")} placeholder="John Doe" />
-              {errors.name && (
-                <p className="text-sm text-red-500">{errors.name.message}</p>
-              )}
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -101,9 +84,7 @@ export default function Register() {
                 placeholder="••••••••"
               />
               {errors.password && (
-                <p className="text-sm text-red-500">
-                  {errors.password.message}
-                </p>
+                <p className="text-sm text-red-500">{errors.password.message}</p>
               )}
             </div>
 
@@ -113,19 +94,49 @@ export default function Register() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? "Creating account..." : "Sign up"}
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Signing in..." : "Sign in"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-500">
-            Already have an account?{" "}
+        <CardFooter className="flex flex-col space-y-4">
+          <div className="relative w-full">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={() => signIn("github", { callbackUrl: "/dashboard" })}
+            >
+              GitHub
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            >
+              Google
+            </Button>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Don't have an account?{" "}
             <Link
-              href="/auth/signin"
+              href="/auth/register"
               className="text-primary font-medium hover:underline"
             >
-              Sign in
+              Sign up
             </Link>
           </p>
         </CardFooter>
